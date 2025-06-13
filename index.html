@@ -1,0 +1,162 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Showing Scheduler</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6 max-w-4xl">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4 flex items-center">
+            <span class="mr-2">🏡</span> AI Showing Scheduler
+        </h1>
+        <p class="text-lg text-gray-600 mb-6">Automate property showing schedules with our AI voice assistant.</p>
+        
+        <!-- Upload Leads Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Upload Leads</h2>
+            <p class="text-gray-500 mb-4">Upload a CSV file with columns: name, phone, preferred_time, showing_address</p>
+            <input type="file" id="lead-file" accept=".csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4">
+            <button id="upload-leads" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition">Upload Leads</button>
+        </div>
+
+        <!-- Schedule Calls Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Schedule Showings</h2>
+            <p class="text-gray-500 mb-4">Initiate outbound calls to schedule showings for uploaded leads.</p>
+            <button id="start-calls" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition">Start Calls</button>
+        </div>
+
+        <!-- Status Messages -->
+        <p id="status" class="text-red-500 mb-6 font-medium"></p>
+
+        <!-- Scheduled Showings Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Scheduled Showings</h2>
+            <ul id="showings" class="list-disc pl-6 space-y-2 text-gray-600"></ul>
+        </div>
+    </div>
+
+    <script>
+        const uploadButton = document.getElementById('upload-leads');
+        const startButton = document.getElementById('start-calls');
+        const status = document.getElementById('status');
+        const showingsList = document.getElementById('showings');
+
+        // Upload CSV of leads
+        uploadButton.addEventListener('click', async () => {
+            const fileInput = document.getElementById('lead-file');
+            const file = fileInput.files[0];
+            if (!file) {
+                status.textContent = 'Please select a CSV file';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const text = e.target.result;
+                    const leads = text.split('\n').slice(1).map(line => {
+                        const [name, phone, preferred_time, showing_address] = line.split(',');
+                        return { name, phone, preferred_time, showing_address };
+                    });
+                    const response = await fetch('/api/leads', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ leads })
+                    });
+                    const { success, error } = await response.json();
+                    status.textContent = success ? 'Leads uploaded successfully!' : `Upload failed: ${error}`;
+                    if (success) updateShowings();
+                } catch (err) {
+                    status.textContent = `Upload error: ${err.message}`;
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Trigger outbound calls
+        startButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/leads');
+                const { data } = await response.json();
+                if (!data.length) {
+                    status.textContent = 'No leads available to call';
+                    return;
+                }
+                for (const lead of data) {
+                    const showingDetails = {
+                        address: lead.showing_address,
+                        date: new Date().toISOString().split('T')[0],
+                        time: lead.preferred_time || '10:00 AM'
+                    };
+                    await fetch('/api/vapi/call/phone', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phoneNumber: lead.phone, showingDetails })
+                    });
+                }
+                status.textContent = 'Calls initiated successfully!';
+                updateShowings();
+            } catch (err) {
+                status.textContent = `Call error: ${err.message}`;
+            }
+        });
+
+        // Update showings list
+        async function updateShowings() {
+            try {
+                const response = await fetch('/api/leads');
+                const { data } = await response.json();
+                showingsList.innerHTML = data.length ? data.map(lead => 
+                    `<li>${lead.name}: ${lead.showing_address} on ${lead.showing_date || 'Pending'}</li>`
+                ).join('') : '<li>No showings scheduled yet.</li>';
+            } catch (err) {
+                showingsList.innerHTML = `<li>Error loading showings: ${err.message}</li>`;
+            }
+        }
+
+        // Initial load
+        updateShowings();
+    </script>
+</body>
+</html>

@@ -8,70 +8,120 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <link rel="stylesheet" href="/style.css">
+    <style>
+        .pulse-animation { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-800">
     <header class="bg-blue-900 text-white p-4 shadow-md">
         <div class="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold font-open-sans">🏠 AI Showing Scheduler</h1>
-                <p class="text-base mt-2 font-inter">Automate property showing schedules with our AI voice assistant, powered by Vapi.ai. Streamline lead management and bookings effortlessly.</p>
+                <h1 class="text-3xl font-bold font-open-sans">🏠 VapiShowAssist</h1>
+                <p class="text-base mt-2 font-inter">AI-Powered Showing Scheduler for Realtors<br>Built for #BuildWithVapi Challenge</p>
             </div>
-            <button id="helpBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold font-inter py-2 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors" aria-label="Show help instructions">Help</button>
+            <div class="flex gap-2">
+                <button id="helpBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold font-inter py-2 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors" aria-label="Show help instructions">📚 Help</button>
+                <button id="demoBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold font-inter py-2 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors" aria-label="View demo">🎥 Demo</button>
+            </div>
         </div>
     </header>
     <main class="container mx-auto p-4 py-6 space-y-6">
         <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold font-open-sans mb-4">Upload Leads</h2>
-            <p class="mb-4 text-gray-600">Upload a CSV file with columns: <code>name</code>, <code>phone</code>, <code>preferred_time</code>, <code>showing_address</code></p>
-            <div class="flex items-center gap-4">
+            <h2 class="text-2xl font-bold font-open-sans mb-4">🚀 Lead Upload</h2>
+            <p class="mb-4 text-gray-600">Upload a CSV with: <code>name</code>, <code>phone</code>, <code>preferred_time</code>, <code>showing_address</code> (optional: <code>budget_range</code>, <code>email</code>)</p>
+            <div class="flex items-center gap-4 mb-4">
                 <input type="file" id="csvFile" accept=".csv" class="hidden" aria-label="Choose CSV file">
-                <label for="csvFile" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold font-inter py-2 px-4 rounded cursor-pointer transition-colors">Choose File</label>
+                <label for="csvFile" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold font-inter py-2 px-4 rounded cursor-pointer transition-colors">📁 Choose CSV</label>
                 <span id="fileName" class="text-gray-600"></span>
-                <button id="uploadBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Upload Leads</button>
+                <button id="uploadBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>⬆️ Upload Leads</button>
             </div>
             <p id="uploadMessage" class="mt-2 text-sm"></p>
         </section>
         <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold font-open-sans mb-4">Schedule Showings</h2>
-            <p class="mb-4 text-gray-600">Initiate outbound calls to schedule showings for uploaded leads.</p>
-            <button id="startCallsBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Start Calls</button>
+            <h2 class="text-2xl font-bold font-open-sans mb-4">🤖 AI Call Campaign</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Agent Style</label>
+                    <select id="agentPersonality" class="w-full p-2 border rounded">
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="luxury">Luxury</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Call Delay (sec)</label>
+                    <input type="number" id="callDelay" min="0" value="5" class="w-full p-2 border rounded">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Max Calls</label>
+                    <input type="number" id="maxConcurrentCalls" min="1" value="5" class="w-full p-2 border rounded">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="startCallsBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>🚀 Start Calls</button>
+                <button id="pauseCallsBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>⏸️ Pause</button>
+                <button id="stopCallsBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>⏹️ Stop</button>
+            </div>
             <p id="callMessage" class="mt-2 text-sm"></p>
         </section>
         <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold font-open-sans mb-4">Scheduled Showings</h2>
-            <div class="overflow-x-auto">
-                <table id="leadsTable" class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="border p-2 text-left font-open-sans">Name</th>
-                            <th class="border p-2 text-left font-open-sans">Phone</th>
-                            <th class="border p-2 text-left font-open-sans">Preferred Time</th>
-                            <th class="border p-2 text-left font-open-sans">Address</th>
-                            <th class="border p-2 text-left font-open-sans">Status</th>
-                            <th class="border p-2 text-left font-open-sans">Showing Date</th>
-                            <th class="border p-2 text-left font-open-sans">Reason</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leadsTableBody"></tbody>
-                </table>
+            <h2 class="text-2xl font-bold font-open-sans mb-4">📊 Campaign Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold">Total Leads</h3>
+                    <p id="totalLeads" class="text-2xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold">Confirmed Showings</h3>
+                    <p id="confirmedShowings" class="text-2xl font-bold text-green-600">0</p>
+                </div>
+                <div class="p-4 bg-gray-50 rounded-lg">
+                    <h3 class="text-lg font-semibold">Pending Actions</h3>
+                    <p id="pendingActions" class="text-2xl font-bold text-yellow-600">0</p>
+                </div>
             </div>
+            <table id="leadsTable" class="w-full border-collapse mt-4">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border p-2 text-left font-open-sans">Score</th>
+                        <th class="border p-2 text-left font-open-sans">Name</th>
+                        <th class="border p-2 text-left font-open-sans">Phone</th>
+                        <th class="border p-2 text-left font-open-sans">Status</th>
+                        <th class="border p-2 text-left font-open-sans">Showing Date</th>
+                        <th class="border p-2 text-left font-open-sans">Est. Value</th>
+                    </tr>
+                </thead>
+                <tbody id="leadsTableBody"></tbody>
+            </table>
+            <p class="mt-2 text-xs text-gray-500">* Est. values are illustrative (2.5% commission, capped at $50,000).</p>
         </section>
     </main>
     <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center" aria-hidden="true">
         <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
             <div class="flex justify-between items-center border-b pb-2 mb-4">
-                <h2 class="text-xl font-bold font-open-sans">How to Use the Showing Scheduler</h2>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700" aria-label="Close help modal">✖</button>
+                <h2 class="text-xl font-bold font-open-sans">🚀 VapiShowAssist Guide</h2>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700" aria-label="Close">×</button>
             </div>
-            <ol class="list-decimal list-inside space-y-2 text-gray-600">
-                <li>Prepare a CSV file with columns: <code>name</code>, <code>phone</code>, <code>preferred_time</code>, <code>showing_address</code>.</li>
-                <li>Click "Choose File" and "Upload Leads" to import your leads.</li>
-                <li>Click "Start Calls" to initiate outbound calls and schedule showings.</li>
-                <li>View confirmed showings in the "Scheduled Showings" table.</li>
-                <li>Check your Google Calendar for synced appointments (coming soon).</li>
-            </ol>
+            <div>
+                <h3 class="text-lg font-semibold mb-2">🎯 Overview</h3>
+                <p class="mb-4">Schedule showings with AI-powered calls. Upload leads, start campaigns, and track results.</p>
+                <h3 class="text-lg font-semibold mb-2">📋 Steps</h3>
+                <ol class="list-decimal list-inside space-y-2 text-gray-600">
+                    <li>Upload a CSV with lead details</li>
+                    <li>Adjust campaign settings</li>
+                    <li>Start calls and monitor the dashboard</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+    <div id="demoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center" aria-hidden="true">
+        <div class="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+            <div class="flex justify-between items-center border-b pb-2 mb-4">
+                <h2 class="text-xl font-bold font-open-sans">🎥 Demo</h2>
+                <button id="closeDemoBtn" class="text-gray-500 hover:text-gray-700" aria-label="Close">×</button>
+            </div>
+            <div><p>Demo Video Coming Soon!</p></div>
         </div>
     </div>
     <script src="/script.js" type="text/javascript"></script>
-</body>
-</html>

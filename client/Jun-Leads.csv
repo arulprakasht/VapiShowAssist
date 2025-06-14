@@ -1,0 +1,8 @@
+Score,Name,Phone,Status,Showing Date,Est. Value
+90,John Doe,XXX-XXX-7890,confirmed,2025-06-14,"$11,250"
+70,Jane Smith,XXX-XXX-3210,confirmed,2025-06-21,"$28,125"
+100,Bob Johnson,XXX-XXX-4567,failed,-,"$45,000"
+65,Alice Brown,XXX-XXX-6666,in-progress,-,"$7,500"
+80,Mike Wilson,XXX-XXX-9999,confirmed,2025-06-15,"$18,750"
+55,Sarah Davis,XXX-XXX-3333,failed,-,"$7,500"
+50,Tom Lee,XXX-XXX-2222,in-progress,-,"$6,250"

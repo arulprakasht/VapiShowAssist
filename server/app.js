@@ -40,16 +40,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Temporarily disable strict CSP for demo
 app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            defaultSrc: ["'self'"],
-            connectSrc: ["'self'", "wss://api.vapi.ai", "https://api.vapi.ai", "wss://*.vapi.ai"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.tailwindcss.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
-            imgSrc: ["'self'", "data:"]
-        }
-    }
+    contentSecurityPolicy: false // Allows all styles and fonts for now
 }));
 
 const generalLimiter = rateLimit({
@@ -175,15 +168,14 @@ app.get('/api/leads', generalLimiter, async (req, res) => {
 app.post('/api/vapi/webhook', express.json(), async (req, res) => {
     try {
         const { type, data } = req.body;
-        if (type === 'call-ended' && data.callId) {
-            console.log(`Call ${data.callId} ended, confirmed: ${data.confirmed || false}`);
-            if (data.confirmed && supabase) {
-                const { error } = await supabase.from('leads').update({
-                    status: 'confirmed',
-                    showing_date: data.date
-                }).eq('phone', data.customerNumber);
-                if (error) throw error;
-            }
+        if (type === 'call-ended' && data.callId && supabase) {
+            console.log(`Call ${data.callId} ended, status: ${data.status || 'unknown'}, confirmed: ${data.confirmed || false}`);
+            const { error } = await supabase.from('leads').update({
+                status: data.status || (data.confirmed ? 'confirmed' : 'failed'),
+                showing_date: data.date,
+                reason: data.error || (data.confirmed ? 'Call completed' : 'Call failed')
+            }).eq('phone', data.customerNumber);
+            if (error) throw error;
         }
         res.json({ success: true });
     } catch (error) {

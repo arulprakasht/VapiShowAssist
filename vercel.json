@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "client/**/*", "use": "@vercel/static" },
+    { "src": "server/app.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/server/app.js" },
+    { "src": "/(.*)", "dest": "/client/index.html" }
+  ],
+  "env": { "NODE_ENV": "production" },
+  "functions": {
+    "server/app.js": { "memory": 512, "maxDuration": 10 }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
+    }
+  ]
+}

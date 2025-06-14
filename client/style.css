@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#helpModal:not(.hidden) {
+    display: flex;
+}
+
+table th, table td {
+    text-align: left;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 1rem;
+    }
+    section {
+        padding: 1rem;
+    }
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    #leadsTable th, #leadsTable td {
+        min-width: 100px;
+    }
+    .flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    #fileName {
+        order: 2;
+    }
+    #uploadBtn {
+        order: 3;
+        width: 100%;
+    }
+}
+
+:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}

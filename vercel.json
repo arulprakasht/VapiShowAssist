@@ -10,10 +10,7 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/server/app.js" },
-    { "src": "/(.*)", "dest": "/client/index.html" }
-  ],
+  
   "env": { "NODE_ENV": "production" },
 
   "headers": [

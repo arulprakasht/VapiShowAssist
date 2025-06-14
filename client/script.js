@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cleaned.length === 11 && cleaned.startsWith('1')) {
             return `+${cleaned}`;
         }
-        return phone; // Return as-is if format is unclear
+        return phone;
     }
 
     function renderLeads() {
@@ -59,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="border p-2">${lead.showing_address}</td>
                 <td class="border p-2">${lead.status || 'pending'}</td>
                 <td class="border p-2">${lead.showing_date || '-'}</td>
+                <td class="border p-2">${lead.reason || '-'}</td>
             `;
             leadsTableBody.appendChild(row);
         });
@@ -71,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 leads = result.data.map(lead => ({
                     ...lead,
-                    originalPhone: lead.phone, // Store original phone for API
-                    phone: maskPhone(lead.phone) // Mask for display
+                    originalPhone: lead.phone,
+                    phone: maskPhone(lead.phone)
                 }));
                 renderLeads();
                 startCallsBtn.disabled = !leads.length;
@@ -84,9 +85,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    csvFileInput.addEventListener('change', () => {
-        fileName.textContent = csvFileInput.files[0]?.name || 'No file chosen';
-        uploadBtn.disabled = !csvFileInput.files.length;
+    csvFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        fileName.textContent = file ? file.name : 'No file chosen';
+        uploadBtn.disabled = !file;
     });
 
     uploadBtn.addEventListener('click', async () => {
@@ -150,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ leads: leads.map(lead => ({
                     ...lead,
-                    phone: formatPhone(lead.originalPhone || lead.phone) // Use original for call
+                    phone: formatPhone(lead.originalPhone || lead.phone)
                 })) })
             });
             const result = await response.json();

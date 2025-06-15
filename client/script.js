@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         startCallsBtn.disabled = !hasNonConfirmed;
     }
 
-    // --- Fetch Leads (keep real phone, use maskedPhone for display) ---
+    // --- Fetch Leads ---
     async function fetchLeads() {
         try {
             const response = await fetch('/api/leads');
@@ -89,8 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
-
     // --- Start Calls for all non-confirmed leads ---
     if (startCallsBtn) {
         startCallsBtn.addEventListener('click', async () => {
@@ -100,42 +98,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             startCallsBtn.disabled = true;
-            showMessage(callMessage, 'Starting calls for all non-confirmed leads...');
+            startCallsBtn.innerHTML = '<span class="loading"></span>Starting Calls...';
+            showMessage(callMessage, 'Starting calls...');
             try {
                 const response = await fetch('/api/vapi/call/bulk', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         leads: nonConfirmedLeads.map(lead => ({
-                            ...lead,
-                            phone: formatPhone(lead.phone)
-                        })),
-                        settings: {
-                            agentPersonality: agentPersonality.value,
-                            callDelay: parseInt(callDelay.value),
-                            maxConcurrentCalls: parseInt(maxConcurrentCalls.value)
-                        }
+                            phone: lead.phone,
+                            name: lead.name,
+                            preferred_time: lead.preferred_time,
+                            showing_address: lead.showing_address
+                        }))
                     })
                 });
                 const result = await response.json();
                 if (result.success) {
-                    showMessage(callMessage, `Campaign started: ${nonConfirmedLeads.length} calls in progress`);
-                    showToast(`Campaign started: ${nonConfirmedLeads.length} calls in progress`);
-                    await fetchLeads();
+                    showMessage(callMessage, `Started calls for ${nonConfirmedLeads.length} leads`, false, true);
+                    showToast(`Started calls for ${nonConfirmedLeads.length} leads`);
+                    // Update lead statuses to in-progress
+                    nonConfirmedLeads.forEach(lead => {
+                        lead.status = 'in-progress';
+                    });
+                    renderLeads();
+                    // Refresh leads after 10 seconds to show webhook updates
+                    setTimeout(fetchLeads, 10000);
                 } else {
                     showMessage(callMessage, result.error, true);
                     showToast(result.error, true);
-                    updateStartCallsBtn();
+                    startCallsBtn.disabled = false;
+                    startCallsBtn.innerHTML = '🚀 Start Calls';
                 }
             } catch (error) {
-                showMessage(callMessage, 'Failed to start calls', true);
-                showToast('Failed to start calls', true);
-                updateStartCallsBtn();
+                showMessage(callMessage, 'Failed to start calls: ' + error.message, true);
+                showToast('Failed to start calls: ' + error.message, true);
+                startCallsBtn.disabled = false;
+                startCallsBtn.innerHTML = '🚀 Start Calls';
             }
         });
     }
 
-    // --- Render Leads (all columns, per-lead Call) ---
+    // --- Render Leads ---
     function renderLeads(leadsData) {
         if (!leadsData || !Array.isArray(leadsData)) leadsData = leads;
         if (!leadsData.length) {
@@ -162,7 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             leadsTableBody.appendChild(row);
         });
-        // Add event listeners for call buttons
         const callButtons = document.querySelectorAll('.call-btn');
         callButtons.forEach(button => {
             const phone = button.getAttribute('data-phone');
@@ -214,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Upload and Filter Logic (unchanged) ---
+    // --- Upload and Filter Logic ---
     csvFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         fileName.textContent = file ? file.name : 'No file chosen';
@@ -270,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadBtn.disabled = false;
         }
     });
-    // --- Filter Logic ---
     const leadFilter = document.getElementById('leadFilter');
     let filteredLeads = [];
     if (leadFilter) {
@@ -284,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
             renderLeads(filteredLeads);
         });
     }
-    // --- Initial Fetch ---
     fetchLeads();
 
     function showMessage(element, message, isError = false, isSuccess = false) {
@@ -292,28 +293,24 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = `mt-2 text-sm ${isError ? 'text-red-600' : isSuccess ? 'text-green-600' : 'text-blue-600'}`;
     }
 
-    function showToast(message, type = 'success') {
+    function showToast(message, isError = false) {
         if (typeof Toastify === 'undefined') {
-            // Fallback to alert if Toastify is not loaded
             alert(message);
             return;
         }
-
-        const options = {
+        Toastify({
             text: message,
             duration: 3000,
             gravity: "top",
             position: "right",
             style: {
-                background: type === 'success' ? '#28a745' : '#dc3545',
+                background: isError ? '#dc3545' : '#28a745',
                 borderRadius: '4px',
                 padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: '500'
             }
-        };
-
-        Toastify(options).showToast();
+        }).showToast();
     }
 
     function maskPhone(phone) {
@@ -325,7 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return phone;
     }
 
-    // --- Dashboard Update ---
     function updateDashboard() {
         if (!leads.length) {
             if (totalLeads) totalLeads.textContent = '0';
@@ -336,377 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const total = leads.length;
         const confirmed = leads.filter(l => l.status === 'confirmed').length;
         const pending = leads.filter(l => l.status !== 'confirmed').length;
-        const actions = leads.filter(l => l.status === 'in-progress').length;
         if (totalLeads) totalLeads.textContent = total;
         if (confirmedShowings) confirmedShowings.textContent = confirmed;
-        if (pendingActions) pendingActions.textContent = actions;
-    }
-
-    // Update header
-    const header = document.querySelector('header');
-    if (header) {
-        header.innerHTML = `
-            <div class="banner">
-                <h1>VapiShowAssist</h1>
-                <p>AI-Powered Real Estate Showing Scheduler</p>
-            </div>
-        `;
-    }
-
-    // Add styles
-    const style = document.createElement('style');
-    style.textContent = `
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f6fa;
-            color: #2c3e50;
-        }
-        .banner {
-            background-color: #2c3e50;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .banner h1 {
-            margin: 0;
-            font-size: 2.5rem;
-            font-weight: 600;
-        }
-        .banner p {
-            margin: 0.5rem 0 0;
-            font-size: 1.2rem;
-            opacity: 0.9;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .card h2 {
-            margin: 0 0 1rem;
-            color: #2c3e50;
-            font-size: 1.5rem;
-        }
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #2c3e50;
-            font-weight: 500;
-        }
-        .form-group input,
-        .form-group textarea {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #e1e1e1;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        .form-group input:focus,
-        .form-group textarea:focus {
-            border-color: #3498db;
-            outline: none;
-        }
-        button {
-            background-color: #3498db;
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #2980b9;
-        }
-        button:disabled {
-            background-color: #bdc3c7;
-            cursor: not-allowed;
-        }
-        .leads-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        }
-        .leads-table th,
-        .leads-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #e1e1e1;
-        }
-        .leads-table th {
-            background-color: #f8f9fa;
-            font-weight: 600;
-            color: #2c3e50;
-        }
-        .leads-table tr:hover {
-            background-color: #f8f9fa;
-        }
-        .status {
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-        .status-scheduled {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-failed {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .status-completed {
-            background-color: #e2e3e5;
-            color: #383d41;
-        }
-        .error {
-            color: #dc3545;
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-        }
-        .success {
-            color: #28a745;
-            margin-top: 0.5rem;
-            font-size: 0.875rem;
-        }
-        .loading {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 0.5rem;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    `;
-    document.head.appendChild(style);
-
-    // Add Toastify CSS
-    const toastifyCSS = document.createElement('link');
-    toastifyCSS.rel = 'stylesheet';
-    toastifyCSS.href = 'https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css';
-    document.head.appendChild(toastifyCSS);
-
-    // Add Toastify JS
-    const toastifyJS = document.createElement('script');
-    toastifyJS.src = 'https://cdn.jsdelivr.net/npm/toastify-js';
-    document.head.appendChild(toastifyJS);
-
-    // Wait for Toastify to load
-    toastifyJS.onload = () => {
-        // Initialize the application
-        initializeApp();
-    };
-
-    function initializeApp() {
-        // Initialize the application
-        fetchLeads();
-        setupEventListeners();
-    }
-
-    function setupEventListeners() {
-        // Add event listeners
-        const startButton = document.getElementById('startCalls');
-        if (startButton) {
-            startButton.addEventListener('click', startCalls);
-        }
-    }
-
-    async function startCalls() {
-        try {
-            const startButton = document.getElementById('startCalls');
-            if (!startButton) return;
-            
-            startButton.disabled = true;
-            startButton.innerHTML = '<span class="loading"></span>Starting Calls...';
-            
-            // Get non-confirmed leads
-            const nonConfirmedLeads = leads.filter(lead => lead.status !== 'confirmed');
-            if (!nonConfirmedLeads.length) {
-                showToast('No leads to call', 'error');
-                startButton.disabled = false;
-                startButton.textContent = 'Start Calls';
-                return;
-            }
-
-            console.log('Starting calls with leads:', nonConfirmedLeads);
-
-            const requestBody = {
-                leads: nonConfirmedLeads.map(lead => ({
-                    phone: lead.phone,
-                    name: lead.name,
-                    preferred_time: lead.preferred_time,
-                    showing_address: lead.showing_address
-                }))
-            };
-
-            console.log('Request body:', requestBody);
-
-            const response = await fetch('/api/vapi/call/bulk', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            console.log('Response status:', response.status);
-            const responseText = await response.text();
-            console.log('Response text:', responseText);
-
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Failed to parse response as JSON:', e);
-                throw new Error('Invalid server response');
-            }
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Failed to start calls');
-            }
-            
-            if (!result.success) {
-                throw new Error(result.error || 'Failed to start calls');
-            }
-
-            console.log('Call start successful:', result);
-
-            // Update UI to show calls are in progress
-            startButton.innerHTML = '<span class="loading"></span>Calls in Progress...';
-            
-            // Update lead statuses
-            result.data.forEach(({ phone, success, callId }) => {
-                const lead = leads.find(l => l.phone === phone);
-                if (lead && success) {
-                    lead.status = 'in-progress';
-                    lead.callId = callId;
-                }
-            });
-
-            // Start polling for updates
-            pollCallStatus();
-            
-            // Show success message
-            showToast(`Started calls for ${nonConfirmedLeads.length} leads`, 'success');
-
-        } catch (error) {
-            console.error('Error starting calls:', error);
-            console.error('Error stack:', error.stack);
-            
-            // Reset button state
-            const startButton = document.getElementById('startCalls');
-            if (startButton) {
-                startButton.disabled = false;
-                startButton.textContent = 'Start Calls';
-            }
-            
-            // Show error message
-            showToast(error.message || 'Failed to start calls. Please try again.', 'error');
-        }
-    }
-
-    async function pollCallStatus() {
-        try {
-            console.log('Polling call status...');
-            const response = await fetch('/api/vapi/calls');
-            console.log('Status response:', response.status);
-            
-            if (!response.ok) {
-                throw new Error('Failed to fetch call status');
-            }
-
-            const responseText = await response.text();
-            console.log('Status response text:', responseText);
-
-            let data;
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Failed to parse status response as JSON:', e);
-                throw new Error('Invalid server response');
-            }
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to fetch call status');
-            }
-
-            console.log('Call status data:', data);
-
-            // Update UI with call status
-            updateCallStatus(data.data);
-            
-            // Continue polling if calls are still in progress
-            if (data.data.some(lead => lead.status === 'in-progress')) {
-                setTimeout(pollCallStatus, 5000); // Poll every 5 seconds
-            } else {
-                // Reset button state when calls are complete
-                const startButton = document.getElementById('startCalls');
-                if (startButton) {
-                    startButton.disabled = false;
-                    startButton.textContent = 'Start Calls';
-                }
-            }
-        } catch (error) {
-            console.error('Error polling call status:', error);
-            console.error('Error stack:', error.stack);
-            // Reset button state on error
-            const startButton = document.getElementById('startCalls');
-            if (startButton) {
-                startButton.disabled = false;
-                startButton.textContent = 'Start Calls';
-            }
-        }
-    }
-
-    function updateCallStatus(data) {
-        // Update the leads table with current status
-        const tbody = document.querySelector('.leads-table tbody');
-        if (!tbody) return;
-
-        data.forEach(lead => {
-            const row = tbody.querySelector(`tr[data-id="${lead.id}"]`);
-            if (row) {
-                const statusCell = row.querySelector('td:last-child');
-                if (statusCell) {
-                    statusCell.textContent = lead.status;
-                    statusCell.className = `status status-${lead.status.toLowerCase()}`;
-                }
-            }
-        });
-
-        // Update pending actions count
-        const pendingActions = document.getElementById('pendingActions');
-        if (pendingActions) {
-            const pendingCount = data.filter(lead => 
-                lead.status === 'pending' || lead.status === 'in-progress'
-            ).length;
-            pendingActions.textContent = pendingCount;
-        }
+        if (pendingActions) pendingActions.textContent = pending;
     }
 });

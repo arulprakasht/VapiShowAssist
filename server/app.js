@@ -42,19 +42,13 @@ app.use(cors(corsOptions));
 
 // Temporarily disable strict CSP for demo
 app.use(helmet({
-    contentSecurityPolicy: false // Allows all styles and fonts for now
+    contentSecurityPolicy: false
 }));
 
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 1000,
     message: { success: false, error: 'Too many requests, please try again later.' }
-});
-
-const callLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 50,
-    message: { success: false, error: 'Too many call attempts, please wait a moment.' }
 });
 
 app.use(express.json());
@@ -87,12 +81,11 @@ app.get('/api/vapi/config', (req, res) => {
     });
 });
 
-app.post('/api/vapi/call/phone', callLimiter, async (req, res) => {
+app.post('/api/vapi/call/phone', async (req, res) => {
     if (!vapiService) return res.status(503).json({ success: false, error: 'Vapi service unavailable' });
     try {
         const { phoneNumber, assistantId, showingDetails } = req.body;
         if (!phoneNumber || !showingDetails) return res.status(400).json({ success: false, error: 'Phone number and showing details required' });
-        // Sanitize input
         const safePhone = String(phoneNumber).replace(/[^\d+]/g, '');
         const safeName = showingDetails.name ? String(showingDetails.name).trim() : '';
         const safeAddress = showingDetails.address ? String(showingDetails.address).trim() : '';
@@ -101,7 +94,7 @@ app.post('/api/vapi/call/phone', callLimiter, async (req, res) => {
         if (!safePhone || !safeName || !safeAddress || !safeDate) return res.status(400).json({ success: false, error: 'All showing details are required' });
         const callData = {
             assistantId: assistantId || vapiService.assistantId,
-            phoneNumberId: vapiService.phoneNumberId,
+            phoneNumberId: vapiService.phoneNumberId || null,
             customer: { number: safePhone },
             assistantOverrides: {
                 firstMessage: `Hello, this is Sarah from Horizon Realty, calling for ${safeName}. I’m excited to help you explore ${safeAddress}, a beautiful property that matches your interests! Are you available for a private showing on ${safeDate} at ${safeTime || 'a time that works for you'}? If that doesn’t work, I can find another time that suits you. Just let me know what’s best, and I’ll handle the rest to make this a seamless experience!`
@@ -110,11 +103,12 @@ app.post('/api/vapi/call/phone', callLimiter, async (req, res) => {
         const result = await vapiService.makeCall(safePhone, assistantId, callData);
         res.json({ success: true, data: result });
     } catch (error) {
+        console.error('Phone call error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
-app.post('/api/vapi/call/bulk', callLimiter, async (req, res) => {
+app.post('/api/vapi/call/bulk', async (req, res) => {
     if (!vapiService) return res.status(503).json({ success: false, error: 'Vapi service unavailable' });
     try {
         const { leads } = req.body;
@@ -127,20 +121,25 @@ app.post('/api/vapi/call/bulk', callLimiter, async (req, res) => {
                 continue;
             }
             try {
+                const safePhone = String(phone).replace(/[^\d+]/g, '');
                 const callData = {
+                    assistantId: vapiService.assistantId,
+                    phoneNumberId: vapiService.phoneNumberId || null,
+                    customer: { number: safePhone },
                     assistantOverrides: {
                         firstMessage: `Hello, this is Sarah from Horizon Realty, calling for ${name}. I’m excited to help you explore ${showing_address}! Are you available for a showing on ${preferred_time}?`
                     }
                 };
-                const result = await vapiService.makeCall(phone, null, callData);
+                const result = await vapiService.makeCall(safePhone, null, callData);
                 results.push({ phone, success: true, callId: result.id });
             } catch (error) {
+                console.error('Bulk call error for phone:', phone, error.message);
                 results.push({ phone, success: false, error: error.message });
             }
         }
         res.json({ success: true, data: results });
     } catch (error) {
-        console.error('Bulk call error:', error);
+        console.error('Bulk call error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -154,7 +153,7 @@ app.post('/api/leads', generalLimiter, async (req, res) => {
         if (error) throw error;
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Lead upload error:', error);
+        console.error('Lead upload error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -166,7 +165,7 @@ app.get('/api/leads', generalLimiter, async (req, res) => {
         if (error) throw error;
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Get leads error:', error);
+        console.error('Get leads error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -185,13 +184,13 @@ app.post('/api/vapi/webhook', express.json(), async (req, res) => {
         }
         res.json({ success: true });
     } catch (error) {
-        console.error('Webhook error:', error);
+        console.error('Webhook error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
+    console.error('Error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error' });
 });
 

@@ -92,18 +92,24 @@ app.post('/api/vapi/call/phone', callLimiter, async (req, res) => {
     try {
         const { phoneNumber, assistantId, showingDetails } = req.body;
         if (!phoneNumber || !showingDetails) return res.status(400).json({ success: false, error: 'Phone number and showing details required' });
+        // Sanitize input
+        const safePhone = String(phoneNumber).replace(/[^\d+]/g, '');
+        const safeName = showingDetails.name ? String(showingDetails.name).trim() : '';
+        const safeAddress = showingDetails.address ? String(showingDetails.address).trim() : '';
+        const safeDate = showingDetails.date ? String(showingDetails.date).trim() : '';
+        const safeTime = showingDetails.time ? String(showingDetails.time).trim() : '';
+        if (!safePhone || !safeName || !safeAddress || !safeDate) return res.status(400).json({ success: false, error: 'All showing details are required' });
         const callData = {
             assistantId: assistantId || vapiService.assistantId,
-            phoneNumberId: null,
-            customer: { number: phoneNumber },
+            phoneNumberId: vapiService.phoneNumberId,
+            customer: { number: safePhone },
             assistantOverrides: {
-                firstMessage: `Hello, this is Sarah from Horizon Realty, calling for ${showingDetails.name}. I’m excited to help you explore ${showingDetails.address}, a beautiful property that matches your interests! Are you available for a private showing on ${showingDetails.date} at ${showingDetails.time}? If that doesn’t work, I can find another time that suits you. Just let me know what’s best, and I’ll handle the rest to make this a seamless experience!`
+                firstMessage: `Hello, this is Sarah from Horizon Realty, calling for ${safeName}. I’m excited to help you explore ${safeAddress}, a beautiful property that matches your interests! Are you available for a private showing on ${safeDate} at ${safeTime || 'a time that works for you'}? If that doesn’t work, I can find another time that suits you. Just let me know what’s best, and I’ll handle the rest to make this a seamless experience!`
             }
         };
-        const result = await vapiService.makeCall(phoneNumber, assistantId, callData);
+        const result = await vapiService.makeCall(safePhone, assistantId, callData);
         res.json({ success: true, data: result });
     } catch (error) {
-        console.error('Phone call error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

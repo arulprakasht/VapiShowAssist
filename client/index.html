@@ -60,40 +60,39 @@
             </div>
             <div class="flex gap-2">
                 <button id="startCallsBtn" class="bg-green-600 hover:bg-green-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>🚀 Start Calls</button>
-                <button id="pauseCallsBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>⏸️ Pause</button>
-                <button id="stopCallsBtn" class="bg-red-600 hover:bg-red-700 text-white font-semibold font-inter py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>⏹️ Stop</button>
             </div>
             <p id="callMessage" class="mt-2 text-sm"></p>
         </section>
         <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold font-open-sans mb-4">📊 Campaign Dashboard</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <h3 class="text-lg font-semibold">Total Leads</h3>
-                    <p id="totalLeads" class="text-2xl font-bold text-blue-600">0</p>
-                </div>
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <h3 class="text-lg font-semibold">Confirmed Showings</h3>
-                    <p id="confirmedShowings" class="text-2xl font-bold text-green-600">0</p>
-                </div>
-                <div class="p-4 bg-gray-50 rounded-lg">
-                    <h3 class="text-lg font-semibold">Pending Actions</h3>
-                    <p id="pendingActions" class="text-2xl font-bold text-yellow-600">0</p>
-                </div>
+            <h2 class="text-2xl font-bold font-open-sans mb-4">📊 Leads Dashboard</h2>
+            <div class="mb-4 flex flex-col md:flex-row gap-2 items-center">
+                <input type="text" id="leadFilter" placeholder="Search by name, phone, or address..." class="p-2 border rounded w-full md:w-1/2" autocomplete="off">
             </div>
-            <table id="leadsTable" class="w-full border-collapse mt-4">
-                <thead>
-                    <tr class="bg-gray-200">
-                        <th class="border p-2 text-left font-open-sans">Score</th>
-                        <th class="border p-2 text-left font-open-sans">Name</th>
-                        <th class="border p-2 text-left font-open-sans">Phone</th>
-                        <th class="border p-2 text-left font-open-sans">Status</th>
-                        <th class="border p-2 text-left font-open-sans">Showing Date</th>
-                        <th class="border p-2 text-left font-open-sans">Est. Value</th>
-                    </tr>
-                </thead>
-                <tbody id="leadsTableBody"></tbody>
-            </table>
+            <form id="directCallForm" class="flex flex-col md:flex-row gap-2 items-center mb-4 bg-gray-50 p-4 rounded-lg shadow-sm">
+                <input type="text" id="directCallName" placeholder="Name" class="p-2 border rounded w-full md:w-1/4" required>
+                <input type="tel" id="directCallPhone" placeholder="Phone (e.g. +1234567890)" class="p-2 border rounded w-full md:w-1/4" required pattern="^\+?[0-9]{10,15}$">
+                <input type="text" id="directCallAddress" placeholder="Showing Address" class="p-2 border rounded w-full md:w-1/4" required>
+                <input type="text" id="directCallTime" placeholder="Preferred Time" class="p-2 border rounded w-full md:w-1/4" required>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">Call Any Number</button>
+            </form>
+            <p id="directCallMessage" class="mt-2 text-sm"></p>
+            <div class="overflow-x-auto">
+                <table id="leadsTable" class="w-full border-collapse mt-4">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="border p-2 text-left font-open-sans">Score</th>
+                            <th class="border p-2 text-left font-open-sans">Name</th>
+                            <th class="border p-2 text-left font-open-sans">Phone</th>
+                            <th class="border p-2 text-left font-open-sans">Status</th>
+                            <th class="border p-2 text-left font-open-sans">Showing Date</th>
+                            <th class="border p-2 text-left font-open-sans">Showing Address</th>
+                            <th class="border p-2 text-left font-open-sans">Est. Value</th>
+                            <th class="border p-2 text-left font-open-sans">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTableBody"></tbody>
+                </table>
+            </div>
             <p class="mt-2 text-xs text-gray-500">* Est. values are illustrative (2.5% commission, capped at $50,000).</p>
         </section>
     </main>

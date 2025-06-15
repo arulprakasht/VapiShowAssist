@@ -160,11 +160,12 @@ class VapiService extends EventEmitter {
 
     async makeCall(phoneNumber, customAssistantId = null, callData = {}) {
         try {
-            if (!this.initialized) throw new Error('VapiService not initialized.');
+            if (!this.initialized) throw new Error('VapiService not initialized. Please check configuration.');
             if (!this.apiKey) throw new Error('Vapi API key not configured');
             if (!phoneNumber) throw new Error('Phone number is required');
+            if (!this.phoneNumberId) throw new Error('Vapi phoneNumberId (VAPI_TWILIO_PHONE_NUMBER_ID) is not configured');
 
-            const cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+            const cleanPhone = phoneNumber.replace(/[^\d+]/g, '');
             const phoneRegex = /^\+?[1-9]\d{8,14}$/;
             if (!phoneRegex.test(cleanPhone)) {
                 throw new Error('Invalid phone number format. Use international format (+1234567890)');
@@ -189,10 +190,10 @@ class VapiService extends EventEmitter {
             };
 
             const result = await this.makeRequest(options, requestData);
-            console.log(`Call initiated successfully:`, result.id);
             return result;
         } catch (error) {
-            console.error('Make call error:', error);
+            // Only log non-sensitive error info
+            console.error('Make call error:', error.message);
             throw error;
         }
     }

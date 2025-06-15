@@ -13,9 +13,8 @@ const PORT = process.env.PORT || 3000;
 let vapiService;
 try {
     vapiService = new VapiService();
-    console.log('VapiService initialized');
 } catch (error) {
-    console.error('Failed to initialize Vapi service:', error.stack);
+    // Silent
 }
 
 let supabase;
@@ -26,10 +25,9 @@ try {
             process.env.SUPABASE_ANON_KEY,
             { auth: { persistSession: false }, db: { schema: 'public' } }
         );
-        console.log('Supabase client initialized');
     }
 } catch (error) {
-    console.error('Failed to initialize Supabase:', error.stack);
+    // Silent
 }
 
 const corsOptions = {
@@ -40,7 +38,6 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Temporarily disable strict CSP for demo
 app.use(helmet({
     contentSecurityPolicy: false
 }));
@@ -103,7 +100,6 @@ app.post('/api/vapi/call/phone', async (req, res) => {
         const result = await vapiService.makeCall(safePhone, assistantId, callData);
         res.json({ success: true, data: result });
     } catch (error) {
-        console.error('Phone call error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -133,13 +129,11 @@ app.post('/api/vapi/call/bulk', async (req, res) => {
                 const result = await vapiService.makeCall(safePhone, null, callData);
                 results.push({ phone, success: true, callId: result.id });
             } catch (error) {
-                console.error('Bulk call error for phone:', phone, error.message);
                 results.push({ phone, success: false, error: error.message });
             }
         }
         res.json({ success: true, data: results });
     } catch (error) {
-        console.error('Bulk call error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -153,7 +147,6 @@ app.post('/api/leads', generalLimiter, async (req, res) => {
         if (error) throw error;
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Lead upload error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -165,7 +158,6 @@ app.get('/api/leads', generalLimiter, async (req, res) => {
         if (error) throw error;
         res.json({ success: true, data });
     } catch (error) {
-        console.error('Get leads error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -174,7 +166,6 @@ app.post('/api/vapi/webhook', express.json(), async (req, res) => {
     try {
         const { type, data } = req.body;
         if (type === 'call-ended' && data.callId && supabase) {
-            console.log(`Call ${data.callId} ended, status: ${data.status || 'unknown'}, confirmed: ${data.confirmed || false}`);
             const { error } = await supabase.from('leads').update({
                 status: data.status || (data.confirmed ? 'confirmed' : 'failed'),
                 showing_date: data.date,
@@ -184,18 +175,15 @@ app.post('/api/vapi/webhook', express.json(), async (req, res) => {
         }
         res.json({ success: true });
     } catch (error) {
-        console.error('Webhook error:', error.message);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 app.use((err, req, res, next) => {
-    console.error('Error:', err.message);
     res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;

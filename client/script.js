@@ -18,10 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const agentPersonality = document.getElementById('agentPersonality');
     const callDelay = document.getElementById('callDelay');
     const maxConcurrentCalls = document.getElementById('maxConcurrentCalls');
+    const specificPhone = document.getElementById('specificPhone');
+    const callNowBtn = document.getElementById('callNowBtn');
 
     let leads = [];
 
-    // --- Lead Scoring and Value Estimation ---
     function calculateLeadScore(lead) {
         let score = 50;
         const timeText = (lead.preferred_time || '').toLowerCase();
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lead.email && lead.email.includes('@')) score += 15;
         return Math.min(Math.max(score, 0), 100);
     }
+
     function estimateLeadValue(lead) {
         let baseValue = 7500;
         let multiplier = 1;
@@ -52,14 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return Math.min(Math.round(baseValue * multiplier), 50000);
     }
 
-    // --- Enable Start Calls Button if non-confirmed leads exist ---
     function updateStartCallsBtn() {
         if (!startCallsBtn) return;
         const hasNonConfirmed = leads.some(lead => lead.status !== 'confirmed');
         startCallsBtn.disabled = !hasNonConfirmed;
     }
 
-    // --- Fetch Leads ---
     async function fetchLeads() {
         try {
             const response = await fetch('/api/leads');
@@ -89,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Start Calls for all non-confirmed leads ---
     if (startCallsBtn) {
         startCallsBtn.addEventListener('click', async () => {
             const nonConfirmedLeads = leads.filter(lead => lead.status !== 'confirmed');
@@ -117,12 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (result.success) {
                     showMessage(callMessage, `Started calls for ${nonConfirmedLeads.length} leads`, false, true);
                     showToast(`Started calls for ${nonConfirmedLeads.length} leads`);
-                    // Update lead statuses to in-progress
                     nonConfirmedLeads.forEach(lead => {
                         lead.status = 'in-progress';
                     });
                     renderLeads();
-                    // Refresh leads after 10 seconds to show webhook updates
                     setTimeout(fetchLeads, 10000);
                 } else {
                     showMessage(callMessage, result.error, true);
@@ -139,7 +136,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Render Leads ---
+    if (callNowBtn) {
+        callNowBtn.addEventListener('click', async () => {
+            const phone = specificPhone.value.trim();
+            if (!phone) {
+                showToast('Please enter a phone number', true);
+                return;
+            }
+            callNowBtn.disabled = true;
+            showMessage(callMessage, 'Initiating call...');
+            try {
+                const response = await fetch('/api/vapi/call/phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: phone,
+                        showingDetails: {
+                            name: 'Demo Lead',
+                            address: '123 Demo St',
+                            date: '2025-06-15',
+                            time: '15:00'
+                        }
+                    })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showMessage(callMessage, `Call initiated to ${maskPhone(phone)}`, false, true);
+                    showToast(`Call initiated to ${maskPhone(phone)}`);
+                    specificPhone.value = '';
+                } else {
+                    showMessage(callMessage, result.error, true);
+                    showToast(result.error, true);
+                }
+            } catch (error) {
+                showMessage(callMessage, 'Failed to initiate call: ' + error.message, true);
+                showToast('Failed to initiate call: ' + error.message, true);
+            } finally {
+                callNowBtn.disabled = false;
+            }
+        });
+    }
+
     function renderLeads(leadsData) {
         if (!leadsData || !Array.isArray(leadsData)) leadsData = leads;
         if (!leadsData.length) {
@@ -180,7 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStartCallsBtn();
     }
 
-    // --- Per-lead Call Logic ---
     async function initiateSingleCall(lead) {
         if (!lead) {
             showToast('Invalid lead data', true);
@@ -217,12 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Upload and Filter Logic ---
     csvFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         fileName.textContent = file ? file.name : 'No file chosen';
         uploadBtn.disabled = !file;
     });
+
     uploadBtn.addEventListener('click', async () => {
         if (!csvFileInput.files.length) {
             showToast('Please select a CSV file', true);
@@ -273,6 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadBtn.disabled = false;
         }
     });
+
     const leadFilter = document.getElementById('leadFilter');
     let filteredLeads = [];
     if (leadFilter) {
@@ -286,6 +323,31 @@ document.addEventListener('DOMContentLoaded', () => {
             renderLeads(filteredLeads);
         });
     }
+
+    if (helpBtn) {
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+        });
+    }
+
+    if (demoBtn) {
+        demoBtn.addEventListener('click', () => {
+            demoModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeDemoBtn) {
+        closeDemoBtn.addEventListener('click', () => {
+            demoModal.classList.add('hidden');
+        });
+    }
+
     fetchLeads();
 
     function showMessage(element, message, isError = false, isSuccess = false) {

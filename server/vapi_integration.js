@@ -12,37 +12,24 @@ class VapiService extends EventEmitter {
         this.baseUrl = 'https://api.vapi.ai';
         this.initialized = false;
 
-        console.log('VapiService constructor - Configuration:', {
-            hasPrivateKey: !!this.privateKey,
-            hasPublicKey: !!this.publicKey,
-            hasAssistantId: !!this.assistantId,
-            baseUrl: this.baseUrl
-        });
-
         if (this.validateConfig()) {
             this.initialize();
         } else {
-            console.error('VapiService not initialized due to missing configuration.');
             throw new Error('Missing required environment variables: VAPI_PRIVATE_KEY, VAPI_PUBLIC_KEY, VAPI_ASSISTANT_ID');
         }
     }
 
     validateConfig() {
         let isValid = true;
-        const issues = [];
         if (!this.privateKey || this.privateKey === 'your_private_key_here') {
-            issues.push('VAPI_PRIVATE_KEY not found or not set');
             isValid = false;
         }
         if (!this.publicKey || this.publicKey === 'your_public_key_here') {
-            issues.push('VAPI_PUBLIC_KEY not found or not set');
             isValid = false;
         }
         if (!this.assistantId || this.assistantId === 'your_assistant_id_here') {
-            issues.push('VAPI_ASSISTANT_ID not found or not set');
             isValid = false;
         }
-        console.log('VapiService validation result:', { isValid, issues });
         return isValid;
     }
 
@@ -50,9 +37,7 @@ class VapiService extends EventEmitter {
         try {
             this.initialized = true;
             this.emit('ready');
-            console.log('VapiService initialized successfully');
         } catch (error) {
-            console.error('Failed to initialize VapiService:', error.message);
             this.emit('error', error);
             throw error;
         }
@@ -71,7 +56,6 @@ class VapiService extends EventEmitter {
                 assistantName: assistantData?.name || 'Unknown'
             };
         } catch (error) {
-            console.error('Health check failed:', error);
             return { status: 'error', message: error.message };
         }
     }
@@ -85,24 +69,11 @@ class VapiService extends EventEmitter {
                 path: options.path
             };
 
-            console.log('Making API request:', {
-                method: requestOptions.method,
-                fullUrl: `${this.baseUrl}${options.path}`,
-                hostname: requestOptions.hostname,
-                path: requestOptions.path,
-                hasData: !!data
-            });
-
             const req = https.request(requestOptions, (res) => {
                 let body = '';
                 res.on('data', (chunk) => { body += chunk; });
                 res.on('end', () => {
                     try {
-                        console.log('API response received:', {
-                            statusCode: res.statusCode,
-                            headers: res.headers,
-                            bodyLength: body.length
-                        });
                         if (!body) {
                             if (res.statusCode >= 200 && res.statusCode < 300) {
                                 resolve({});
@@ -115,24 +86,20 @@ class VapiService extends EventEmitter {
                         if (res.statusCode >= 200 && res.statusCode < 300) {
                             resolve(response);
                         } else {
-                            console.error('API error response:', { statusCode: res.statusCode, response });
                             reject(new Error(`API Error: ${res.statusCode} - ${response.message || body}`));
                         }
                     } catch (error) {
-                        console.error('Failed to parse API response:', error);
                         reject(new Error(`Parse Error: ${error.message}`));
                     }
                 });
             });
 
             req.on('error', (error) => {
-                console.error('Request error:', error);
                 reject(new Error(`Request Error: ${error.message}`));
             });
 
             if (data) {
                 const jsonData = JSON.stringify(data);
-                console.log('Sending request data:', jsonData);
                 req.write(jsonData);
             }
             req.end();
@@ -153,7 +120,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options);
         } catch (error) {
-            console.error('Get assistant error:', error);
             throw error;
         }
     }
@@ -177,7 +143,7 @@ class VapiService extends EventEmitter {
                 customer: {
                     number: cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone}`
                 },
-                ...callData // Merge assistantOverrides or other custom data
+                ...callData
             };
 
             const options = {
@@ -192,8 +158,6 @@ class VapiService extends EventEmitter {
             const result = await this.makeRequest(options, requestData);
             return result;
         } catch (error) {
-            // Only log non-sensitive error info
-            console.error('Make call error:', error.message);
             throw error;
         }
     }
@@ -228,7 +192,6 @@ class VapiService extends EventEmitter {
             }
             return { ...result, publicKey: this.publicKey };
         } catch (error) {
-            console.error('Create web call error:', error);
             throw error;
         }
     }
@@ -247,7 +210,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options);
         } catch (error) {
-            console.error('Get calls error:', error);
             throw error;
         }
     }
@@ -267,7 +229,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options);
         } catch (error) {
-            console.error('Get call error:', error);
             throw error;
         }
     }
@@ -287,7 +248,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options);
         } catch (error) {
-            console.error('End call error:', error);
             throw error;
         }
     }
@@ -297,7 +257,6 @@ class VapiService extends EventEmitter {
             const call = await this.getCall(callId);
             return call.transcript || null;
         } catch (error) {
-            console.error('Get transcript error:', error);
             throw error;
         }
     }
@@ -316,7 +275,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options, updates);
         } catch (error) {
-            console.error('Update assistant error:', error);
             throw error;
         }
     }
@@ -337,7 +295,6 @@ class VapiService extends EventEmitter {
             };
             return await this.makeRequest(options, data);
         } catch (error) {
-            console.error('Update showing error:', error);
             throw error;
         }
     }

@@ -124,7 +124,19 @@
         </div>
     </div>
     <script src="/script.js"></script>
-//VERCEL monitoring
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={{GOOGL_TAG_MANAGER_ID}}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', '{{GOOGL_TAG_MANAGER_ID}}');
+</script>
+
+    //VERCEL monitoring
+
+
 
 <script>
   window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
